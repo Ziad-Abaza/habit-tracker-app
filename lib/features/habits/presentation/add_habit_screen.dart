@@ -27,6 +27,8 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
   String? _selectedCategoryId;
   DateTime? _startDate;
   DateTime? _endDate;
+  List<DateTime> _reminders = [];
+  String _priority = 'Medium';
 
   @override
   void initState() {
@@ -52,6 +54,8 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
       _selectedCategoryId = habit.categoryId;
       _startDate = habit.startDate;
       _endDate = habit.endDate;
+      _reminders = habit.reminders ?? [];
+      _priority = habit.priority;
     });
   }
 
@@ -95,6 +99,8 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
         categoryId: _selectedCategoryId,
         startDate: _startDate,
         endDate: _endDate,
+        reminders: _reminders,
+        priority: _priority,
       );
 
       if (widget.habitId != null) {
@@ -103,27 +109,32 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
         await repository.addHabit(habit);
       }
       
-      // Schedule notifications if time is set
-      if (habit.time != null) {
-        final notificationService = ref.read(notificationServiceProvider);
-        
-        // Schedule notifications for each day in the frequency
+      // Schedule notifications
+      final notificationService = ref.read(notificationServiceProvider);
+      
+      // Cancel existing ones first if editing
+      if (widget.habitId != null) {
+        for (int i = 0; i < 7; i++) {
+          await notificationService.cancelNotification(habit.id.hashCode + i);
+          for (int r = 0; r < 5; r++) { // Assuming max 5 custom reminders
+             await notificationService.cancelNotification(habit.id.hashCode + 100 + (i * 10) + r);
+          }
+        }
+      }
+
+      Future<void> scheduleAt(DateTime targetTime, int offset) async {
         for (int dayOfWeek in habit.frequency) {
-          // Find the next occurrence of this day
           final now = DateTime.now();
           int daysUntilNext = (dayOfWeek - now.weekday) % 7;
           
-          // If it's 0, it means today - check if time has passed
           if (daysUntilNext == 0) {
             final scheduledTime = DateTime(
               now.year,
               now.month,
               now.day,
-              habit.time!.hour,
-              habit.time!.minute,
+              targetTime.hour,
+              targetTime.minute,
             );
-            
-            // If time has passed today, schedule for next week
             if (now.isAfter(scheduledTime)) {
               daysUntilNext = 7;
             }
@@ -133,22 +144,31 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
             now.year,
             now.month,
             now.day + daysUntilNext,
-            habit.time!.hour,
-            habit.time!.minute,
+            targetTime.hour,
+            targetTime.minute,
           );
           
-          print('Scheduling habit notification for: $nextOccurrence (Day: $dayOfWeek)');
-          
-          // Only schedule if within start/end date range
           if ((habit.startDate == null || !nextOccurrence.isBefore(habit.startDate!)) &&
               (habit.endDate == null || !nextOccurrence.isAfter(habit.endDate!))) {
             await notificationService.scheduleNotification(
-              id: habit.id.hashCode + dayOfWeek,
+              id: habit.id.hashCode + offset + dayOfWeek,
               title: 'Habit Reminder: ${habit.title}',
               body: habit.description.isNotEmpty ? habit.description : 'Time to complete your habit!',
               scheduledDate: nextOccurrence,
             );
           }
+        }
+      }
+
+      // Schedule primary time
+      if (habit.time != null) {
+        await scheduleAt(habit.time!, 0);
+      }
+
+      // Schedule additional reminders
+      if (habit.reminders != null) {
+        for (int i = 0; i < habit.reminders!.length; i++) {
+          await scheduleAt(habit.reminders![i], 100 + (i * 10));
         }
       }
       
@@ -174,6 +194,7 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
               decoration: const InputDecoration(
                 labelText: 'Habit Title',
                 border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.edit),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -188,8 +209,9 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
               decoration: const InputDecoration(
                 labelText: 'Description (Optional)',
                 border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.description),
               ),
-              maxLines: 3,
+              maxLines: 2,
             ),
             const SizedBox(height: 24),
             const Text('Frequency', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -208,13 +230,14 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
             ),
             const SizedBox(height: 24),
             ListTile(
-              title: const Text('Time'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Primary Reminder Time', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(_selectedTime?.format(context) ?? 'Not set'),
               trailing: const Icon(Icons.access_time),
               onTap: () async {
                 final time = await showTimePicker(
                   context: context,
-                  initialTime: TimeOfDay.now(),
+                  initialTime: _selectedTime ?? TimeOfDay.now(),
                 );
                 if (time != null) {
                   setState(() {
@@ -223,10 +246,169 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
                 }
               },
             ),
+            const Divider(),
             const SizedBox(height: 24),
+            const Text('Habit Configuration', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            
+            // Category Selection
+            Consumer(
+              builder: (context, ref, child) {
+                final categoriesAsync = ref.watch(categoryRepositoryProvider);
+                return categoriesAsync.when(
+                  data: (repository) {
+                    final categories = repository.getAllCategories();
+                    return DropdownButtonFormField<String>(
+                      value: _selectedCategoryId,
+                      decoration: const InputDecoration(
+                        labelText: 'Category',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.category),
+                      ),
+                      items: categories.map((cat) {
+                        return DropdownMenuItem(
+                          value: cat.id,
+                          child: Row(
+                            children: [
+                              Icon(IconData(cat.icon, fontFamily: 'MaterialIcons'), color: Color(cat.color)),
+                              const SizedBox(width: 8),
+                              Text(cat.name),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedCategoryId = value;
+                        });
+                      },
+                    );
+                  },
+                  loading: () => const CircularProgressIndicator(),
+                  error: (_, __) => const Text('Error loading categories'),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Priority Selection
+            DropdownButtonFormField<String>(
+              value: _priority,
+              decoration: const InputDecoration(
+                labelText: 'Priority',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.priority_high),
+              ),
+              items: ['Low', 'Medium', 'High'].map((p) {
+                return DropdownMenuItem(value: p, child: Text(p));
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _priority = value;
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 24),
+
+            // Date Range
+            const Text('Duration', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: ListTile(
+                    title: const Text('Start Date'),
+                    subtitle: Text(_startDate != null ? DateFormat('MMM d, yyyy').format(_startDate!) : 'Not set'),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _startDate ?? DateTime.now(),
+                        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                        lastDate: DateTime.now().add(const Duration(days: 3650)),
+                      );
+                      if (date != null) {
+                        setState(() {
+                          _startDate = date;
+                        });
+                      }
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: ListTile(
+                    title: const Text('End Date'),
+                    subtitle: Text(_endDate != null ? DateFormat('MMM d, yyyy').format(_endDate!) : 'No limit'),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _endDate ?? (_startDate ?? DateTime.now()).add(const Duration(days: 30)),
+                        firstDate: _startDate ?? DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 3650)),
+                      );
+                      if (date != null) {
+                        setState(() {
+                          _endDate = date;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Reminders', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.add_alarm),
+                  onPressed: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (time != null) {
+                      setState(() {
+                        final now = DateTime.now();
+                        _reminders.add(DateTime(now.year, now.month, now.day, time.hour, time.minute));
+                        _reminders.sort();
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+            if (_reminders.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('No custom reminders set', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                children: _reminders.map((reminder) {
+                  return Chip(
+                    label: Text(DateFormat('hh:mm a').format(reminder)),
+                    onDeleted: () {
+                      setState(() {
+                        _reminders.remove(reminder);
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+
+            const SizedBox(height: 32),
             ElevatedButton(
               onPressed: _saveHabit,
-              child: const Text('Create Habit'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(widget.habitId != null ? 'Update Habit' : 'Create Habit'),
             ),
           ],
         ),

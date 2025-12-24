@@ -23,13 +23,17 @@ class TimeBlockAdapter extends TypeAdapter<TimeBlock> {
       durationMinutes: fields[3] as int,
       type: fields[4] as String,
       isCompleted: fields[5] as bool,
+      categoryId: fields[6] as String?,
+      notes: fields[7] as String?,
+      color: fields[8] as int?,
+      icon: fields[9] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TimeBlock obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +45,15 @@ class TimeBlockAdapter extends TypeAdapter<TimeBlock> {
       ..writeByte(4)
       ..write(obj.type)
       ..writeByte(5)
-      ..write(obj.isCompleted);
+      ..write(obj.isCompleted)
+      ..writeByte(6)
+      ..write(obj.categoryId)
+      ..writeByte(7)
+      ..write(obj.notes)
+      ..writeByte(8)
+      ..write(obj.color)
+      ..writeByte(9)
+      ..write(obj.icon);
   }
 
   @override

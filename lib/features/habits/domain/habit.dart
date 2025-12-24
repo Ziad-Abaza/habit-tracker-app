@@ -40,6 +40,9 @@ class Habit {
   @HiveField(11)
   final List<DateTime>? reminders;
 
+  @HiveField(12, defaultValue: 'Medium')
+  final String priority; // Low, Medium, High
+
   Habit({
     required this.id,
     required this.title,
@@ -53,6 +56,7 @@ class Habit {
     this.startDate,
     this.endDate,
     this.reminders,
+    this.priority = 'Medium',
   });
 
   Habit copyWith({
@@ -68,6 +72,7 @@ class Habit {
     DateTime? startDate,
     DateTime? endDate,
     List<DateTime>? reminders,
+    String? priority,
   }) {
     return Habit(
       id: id ?? this.id,
@@ -82,6 +87,7 @@ class Habit {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       reminders: reminders ?? this.reminders,
+      priority: priority ?? this.priority,
     );
   }
 
