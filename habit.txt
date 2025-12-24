@@ -1,0 +1,129 @@
+App name is "Habit"
+
+TaskFlow – Routine & Weekly Scheduling Mobile Application
+Functional Requirements & Feature Breakdown
+1. Habit & Routine Management
+
+This module focuses on managing recurring activities and fixed routines.
+
+Create recurring habits:
+
+Daily habits
+
+Habits on specific days of the week
+
+Assign a specific time and duration to each habit
+
+Clearly distinguish habits from one-time tasks (visually and logically)
+
+Automatically display habits within the weekly schedule
+
+Track habit streaks (continuous completion)
+
+Measure commitment level:
+
+Example: Completed 5 out of 7 scheduled days
+
+Provide basic habit insights:
+
+Most consistent habits
+
+Missed or broken habits
+
+2. Weekly Templates / Schedule Presets
+
+Designed for users with mostly stable weekly routines.
+
+Create reusable weekly schedule templates
+
+Define fixed activities for each weekday
+
+Apply a weekly template with a single action
+
+Allow temporary edits for a specific week
+
+Preserve the original template without permanent changes
+
+Support multiple templates (e.g., Study Week, Work Week)
+
+3. Time Block Management
+
+Enables structured, time-based day planning.
+
+Divide the day into time blocks
+
+Supported block types:
+
+Work
+
+Study
+
+Exercise
+
+Rest / Personal time
+
+Set a defined duration for each block
+
+Prevent overlapping time blocks
+
+Provide a visual timeline-based daily and weekly view
+
+4. Smart Conflict Resolution
+
+Handles scheduling conflicts intelligently rather than only displaying warnings.
+
+Automatically detect time conflicts when adding or editing activities
+
+Provide smart resolution suggestions:
+
+Move one activity to a different time slot
+
+Reduce the duration of an activity
+
+Suggest an alternative day
+
+Always prioritize fixed habits and routines over flexible tasks
+
+Allow the user to accept or override suggested resolutions
+
+5. Notifications & Context-Aware Reminders
+
+Core functionality for a mobile-first experience.
+
+Customizable reminders before scheduled activities
+
+Smart notifications based on user behavior:
+
+Alert if an activity has not started on time
+
+Alert when the scheduled time has been exceeded
+
+Transition reminders between consecutive activities
+
+Daily morning summary notification
+
+End-of-day reminder for activity review
+
+Offline support using local notifications
+
+6. General Mobile Application Requirements
+
+Native mobile application (Android & iOS)
+
+Clean, minimal, and intuitive user interface
+
+Offline-first functionality
+
+Local data persistence with optional future sync
+
+Fast performance suitable for frequent daily use
+
+Expected Outcome
+
+The application will function as:
+
+A weekly life organizer
+
+A habit and routine management tool
+
+A structured scheduling system supporting work, study, and personal life balance
