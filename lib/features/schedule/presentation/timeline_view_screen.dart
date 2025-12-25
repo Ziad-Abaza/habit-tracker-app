@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../settings/presentation/settings_controller.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../data/schedule_repository.dart';
@@ -19,35 +20,43 @@ class _TimelineViewScreenState extends ConsumerState<TimelineViewScreen> {
   @override
   Widget build(BuildContext context) {
     final repositoryAsync = ref.watch(scheduleRepositoryProvider);
+    final settings = ref.watch(settingsControllerProvider);
 
     return Scaffold(
-      drawer: AppDrawer(),
+      drawer: const AppDrawer(),
       appBar: AppBar(
-        title: Text(DateFormat('MMM d, yyyy').format(_selectedDate)),
+        title: Text(settings.showAllDays 
+            ? 'All Activities' 
+            : DateFormat('MMM d, yyyy').format(_selectedDate)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: () async {
-              final date = await showDatePicker(
-                context: context,
-                initialDate: _selectedDate,
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
-              );
-              if (date != null) {
-                setState(() {
-                  _selectedDate = date;
-                });
-              }
-            },
-          ),
+          if (!settings.showAllDays)
+            IconButton(
+              icon: const Icon(Icons.calendar_today),
+              onPressed: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                );
+                if (date != null) {
+                  setState(() {
+                    _selectedDate = date;
+                  });
+                }
+              },
+            ),
         ],
       ),
       body: repositoryAsync.when(
         data: (repository) {
           return StreamBuilder<List<TimeBlock>>(
-            stream: repository.watchSchedule(_selectedDate),
-            initialData: repository.getBlocksForDate(_selectedDate),
+            stream: settings.showAllDays 
+                ? repository.watchAllSchedule() 
+                : repository.watchSchedule(_selectedDate),
+            initialData: settings.showAllDays 
+                ? repository.getAllBlocks() 
+                : repository.getBlocksForDate(_selectedDate),
             builder: (context, snapshot) {
               final blocks = snapshot.data ?? [];
               if (blocks.isEmpty) {
@@ -73,6 +82,14 @@ class _TimelineViewScreenState extends ConsumerState<TimelineViewScreen> {
                           width: 60,
                           child: Column(
                             children: [
+                              if (settings.showAllDays)
+                                Text(
+                                  DateFormat('MMM d').format(block.startTime),
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               Text(
                                 DateFormat('HH:mm').format(block.startTime),
                                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -92,58 +109,65 @@ class _TimelineViewScreenState extends ConsumerState<TimelineViewScreen> {
                           ),
                         ),
                         Expanded(
-                          child: Card(
-                            margin: const EdgeInsets.only(bottom: 16, right: 16),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        block.title,
-                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
-                                        onPressed: () => repository.deleteBlock(block.id),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${block.durationMinutes} min',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).colorScheme.primaryContainer,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          block.type.toUpperCase(),
-                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          child: GestureDetector(
+                            onTap: () {
+                              context.go('/schedule/activity/${block.id}');
+                            },
+                            child: Card(
+                              margin: const EdgeInsets.only(bottom: 16, right: 16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            block.title,
+                                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
+                                          onPressed: () => repository.deleteBlock(block.id),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${block.durationMinutes} min',
+                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.primaryContainer,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            block.type.toUpperCase(),
+                                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),

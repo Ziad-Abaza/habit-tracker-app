@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
+import 'features/settings/presentation/settings_controller.dart';
+import 'features/settings/data/settings_repository.dart';
 
 import 'core/notifications/notification_service.dart';
 
@@ -10,16 +12,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   
-  final container = ProviderContainer();
+  // Pre-initialize repository
+  final settingsRepository = await SettingsRepository.init();
+  
+  final container = ProviderContainer(
+    overrides: [
+      settingsRepositoryProvider.overrideWithValue(settingsRepository),
+    ],
+  );
+  
   final notificationService = container.read(notificationServiceProvider);
   await notificationService.init();
-  
-  // Show a test notification to verify setup
-  await notificationService.showImmediateNotification(
-    id: 0,
-    title: 'Habit Tracker',
-    body: 'Notifications are working! You\'ll receive reminders for your habits and activities.',
-  );
 
   runApp(UncontrolledProviderScope(
     container: container,
@@ -33,12 +36,13 @@ class HabitApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final settings = ref.watch(settingsControllerProvider);
 
     return MaterialApp.router(
       title: 'Habit',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: settings.themeMode,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );

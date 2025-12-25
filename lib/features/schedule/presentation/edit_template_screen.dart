@@ -69,17 +69,35 @@ class _EditTemplateScreenState extends ConsumerState<EditTemplateScreen> {
   }
 
   void _addActivity(int day) async {
-    // TODO: Show dialog to add activity
-    // For now, adding a dummy activity
-    setState(() {
-      _schedule[day]!.add(TemplateActivity(
-        title: 'New Activity',
-        startHour: 9,
-        startMinute: 0,
-        durationMinutes: 60,
-        type: 'work',
-      ));
-    });
+    final TimeOfDay initialTime = const TimeOfDay(hour: 9, minute: 0);
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+
+    if (pickedTime != null) {
+      final result = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (context) => const _AddActivityDialog(),
+      );
+
+      if (result != null && context.mounted) {
+        setState(() {
+          _schedule[day]!.add(TemplateActivity(
+            title: result['title'] ?? 'New Activity',
+            startHour: pickedTime.hour,
+            startMinute: pickedTime.minute,
+            durationMinutes: result['duration'] ?? 60,
+            type: result['type'] ?? 'work',
+          ));
+          _schedule[day]!.sort((a, b) {
+            final aTime = a.startHour * 60 + a.startMinute;
+            final bTime = b.startHour * 60 + b.startMinute;
+            return aTime.compareTo(bTime);
+          });
+        });
+      }
+    }
   }
 
   @override
@@ -149,6 +167,128 @@ class _EditTemplateScreenState extends ConsumerState<EditTemplateScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AddActivityDialog extends StatefulWidget {
+  const _AddActivityDialog();
+
+  @override
+  _AddActivityDialogState createState() => _AddActivityDialogState();
+}
+
+class _AddActivityDialogState extends State<_AddActivityDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _durationController = TextEditingController(text: '60');
+  String _selectedType = 'work';
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _durationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Map<String, dynamic>> activityTypes = [
+      {'value': 'work', 'label': 'Work', 'icon': Icons.work},
+      {'value': 'study', 'label': 'Study', 'icon': Icons.school},
+      {'value': 'exercise', 'label': 'Exercise', 'icon': Icons.fitness_center},
+      {'value': 'rest', 'label': 'Rest', 'icon': Icons.hotel},
+      {'value': 'other', 'label': 'Other', 'icon': Icons.more_horiz},
+    ];
+
+    return AlertDialog(
+      title: const Text('Add Activity'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Activity Name',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              const Text('Activity Type:', style: TextStyle(fontSize: 16)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: activityTypes.map((type) {
+                  final isSelected = _selectedType == type['value'];
+                  return FilterChip(
+                    label: Text(type['label']),
+                    selected: isSelected,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedType = type['value'];
+                      });
+                    },
+                    avatar: Icon(
+                      type['icon'],
+                      color: isSelected ? Colors.white : null,
+                    ),
+                    selectedColor: Theme.of(context).primaryColor,
+                    checkmarkColor: Colors.white,
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _durationController,
+                decoration: const InputDecoration(
+                  labelText: 'Duration (minutes)',
+                  border: OutlineInputBorder(),
+                  suffixText: 'minutes',
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter duration';
+                  }
+                  final minutes = int.tryParse(value);
+                  if (minutes == null || minutes <= 0) {
+                    return 'Please enter a valid number';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              Navigator.of(context).pop({
+                'title': _titleController.text,
+                'type': _selectedType,
+                'duration': int.parse(_durationController.text),
+              });
+            }
+          },
+          child: const Text('Add'),
+        ),
+      ],
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -73,6 +74,30 @@ class AppDrawer extends StatelessWidget {
               Navigator.pop(context);
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.bar_chart),
+            title: const Text('Statistics'),
+            onTap: () {
+              context.go('/statistics');
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('Settings'),
+            onTap: () {
+              context.push('/settings');
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('Help & Guide'),
+            onTap: () {
+              context.push('/guide');
+              Navigator.pop(context);
+            },
+          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.info_outline),
@@ -87,6 +112,17 @@ class AppDrawer extends StatelessWidget {
                 children: [
                   const Text('A comprehensive habit tracking and scheduling app.'),
                 ],
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.share),
+            title: const Text('Share App'),
+            onTap: () {
+              Navigator.pop(context);
+              Share.share(
+                'Check out this amazing Habit Tracker app to stay productive and build good habits!',
+                subject: 'Habit Tracker App',
               );
             },
           ),

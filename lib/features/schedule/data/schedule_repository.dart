@@ -42,6 +42,14 @@ class ScheduleRepository {
     await _box.delete(id);
   }
 
+  List<TimeBlock> getAllBlocks() {
+    return _box.values.toList();
+  }
+
+  Stream<List<TimeBlock>> watchAllSchedule() {
+    return _box.watch().map((event) => _box.values.toList());
+  }
+
   Stream<List<TimeBlock>> watchSchedule(DateTime date) {
     return _box.watch().map((event) {
       return _box.values.where((block) {

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../data/habit_repository.dart';
 import '../domain/habit.dart';
 import '../../../core/widgets/app_drawer.dart';
+import '../../settings/presentation/settings_controller.dart';
 
 final selectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
 
@@ -15,26 +17,28 @@ class HabitListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final repositoryAsync = ref.watch(habitRepositoryProvider);
     final selectedDate = ref.watch(selectedDateProvider);
+    final settings = ref.watch(settingsControllerProvider);
 
     return Scaffold(
-      drawer: AppDrawer(),
+      drawer: const AppDrawer(),
       appBar: AppBar(
-        title: const Text('Habits'),
+        title: Text(settings.showAllDays ? 'All Habits' : 'Habits'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: () async {
-              final date = await showDatePicker(
-                context: context,
-                initialDate: selectedDate,
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2100),
-              );
-              if (date != null) {
-                ref.read(selectedDateProvider.notifier).state = date;
-              }
-            },
-          ),
+          if (!settings.showAllDays)
+            IconButton(
+              icon: const Icon(Icons.calendar_today),
+              onPressed: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (date != null) {
+                  ref.read(selectedDateProvider.notifier).state = date;
+                }
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.calendar_view_week),
             onPressed: () => context.go('/templates'),
@@ -44,7 +48,7 @@ class HabitListScreen extends ConsumerWidget {
             onPressed: () => context.go('/schedule'),
           ),
         ],
-        bottom: PreferredSize(
+        bottom: settings.showAllDays ? null : PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: Container(
             height: 60,
@@ -101,41 +105,62 @@ class HabitListScreen extends ConsumerWidget {
             initialData: repository.getAllHabits(),
             builder: (context, snapshot) {
               final allHabits = snapshot.data ?? [];
-              // Filter habits for selected date
-              final habits = repository.getHabitsForDate(selectedDate);
+              final habits = settings.showAllDays 
+                  ? allHabits 
+                  : repository.getHabitsForDate(selectedDate);
               
               if (habits.isEmpty) {
-                return const Center(
-                  child: Text('No habits for this day.'),
+                return Center(
+                  child: Text(settings.showAllDays 
+                      ? 'No habits created yet.' 
+                      : 'No habits for this day.'),
                 );
               }
               return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 80),
+                padding: const EdgeInsets.only(bottom: 80, top: 8),
                 itemCount: habits.length,
                 itemBuilder: (context, index) {
                   final habit = habits[index];
+                  final isCompact = settings.compactView;
+                  
                   return Card(
+                    margin: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: isCompact ? 2 : 6,
+                    ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: () {
                         context.push('/edit-habit/${habit.id}');
                       },
                       child: Padding(
-                        padding: const EdgeInsets.all(12.0),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: isCompact ? 4 : 8,
+                        ),
                         child: Row(
                           children: [
-                            Transform.scale(
-                              scale: 1.2,
-                              child: Checkbox(
-                                value: habit.isCompletedOnDate(selectedDate),
-                                shape: const CircleBorder(),
-                                activeColor: Theme.of(context).colorScheme.primary,
-                                onChanged: (value) {
-                                  repository.toggleCompletion(habit.id, selectedDate);
-                                },
+                            if (!settings.showAllDays)
+                              Transform.scale(
+                                scale: isCompact ? 1.0 : 1.2,
+                                child: Checkbox(
+                                  value: habit.isCompletedOnDate(selectedDate),
+                                  shape: const CircleBorder(),
+                                  activeColor: Theme.of(context).colorScheme.primary,
+                                  onChanged: (value) {
+                                    if (settings.hapticFeedback) {
+                                      HapticFeedback.mediumImpact();
+                                    }
+                                    repository.toggleCompletion(habit.id, selectedDate);
+                                  },
+                                ),
+                              )
+                            else 
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0, right: 16.0),
+                                child: Icon(Icons.repeat, color: Theme.of(context).colorScheme.primary, size: 20),
                               ),
-                            ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,15 +169,16 @@ class HabitListScreen extends ConsumerWidget {
                                     habit.title,
                                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.bold,
-                                      decoration: habit.isCompletedOnDate(selectedDate)
+                                      fontSize: isCompact ? 14 : 16,
+                                      decoration: !settings.showAllDays && habit.isCompletedOnDate(selectedDate)
                                           ? TextDecoration.lineThrough
                                           : null,
-                                      color: habit.isCompletedOnDate(selectedDate)
+                                      color: !settings.showAllDays && habit.isCompletedOnDate(selectedDate)
                                           ? Colors.grey
                                           : null,
                                     ),
                                   ),
-                                  if (habit.description.isNotEmpty)
+                                  if (!isCompact && habit.description.isNotEmpty)
                                     Text(
                                       habit.description,
                                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -165,7 +191,11 @@ class HabitListScreen extends ConsumerWidget {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                              icon: Icon(
+                                Icons.delete_outline,
+                                color: Colors.grey,
+                                size: isCompact ? 20 : 24,
+                              ),
                               onPressed: () => repository.deleteHabit(habit.id),
                             ),
                           ],
