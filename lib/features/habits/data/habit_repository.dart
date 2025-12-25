@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/habit.dart';
+import '../../../core/services/home_widget_service.dart';
+
 
 part 'habit_repository.g.dart';
 
@@ -42,17 +44,26 @@ class HabitRepository {
     }).toList();
   }
 
+  Future<void> updateWidget() async {
+    final todayHabits = getHabitsForDate(DateTime.now());
+    await HomeWidgetService.updateWidget(todayHabits);
+  }
+
   Future<void> addHabit(Habit habit) async {
     await _box.put(habit.id, habit);
+    await updateWidget();
   }
 
   Future<void> updateHabit(Habit habit) async {
     await _box.put(habit.id, habit);
+    await updateWidget();
   }
 
   Future<void> deleteHabit(String id) async {
     await _box.delete(id);
+    await updateWidget();
   }
+
 
   Future<void> toggleCompletion(String id, DateTime date) async {
     final habit = _box.get(id);
@@ -74,8 +85,10 @@ class HabitRepository {
 
       final updatedHabit = habit.copyWith(completedDates: completedDates);
       await _box.put(id, updatedHabit);
+      await updateWidget();
     }
   }
+
 
   Stream<List<Habit>> watchHabits() {
     return _box.watch().map((event) => _box.values.toList());
@@ -84,5 +97,7 @@ class HabitRepository {
 
 @riverpod
 Future<HabitRepository> habitRepository(Ref ref) async {
-  return HabitRepository.init();
+  final repository = await HabitRepository.init();
+  await repository.updateWidget();
+  return repository;
 }
