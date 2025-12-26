@@ -8,6 +8,7 @@ import '../../categories/data/category_repository.dart';
 import '../../categories/domain/category.dart';
 import 'package:intl/intl.dart';
 import '../../../core/notifications/notification_service.dart';
+import '../../../core/utils/icon_helper.dart';
 
 class AddHabitScreen extends ConsumerStatefulWidget {
   final String? habitId;
@@ -270,7 +271,7 @@ class _AddHabitScreenState extends ConsumerState<AddHabitScreen> {
                           value: cat.id,
                           child: Row(
                             children: [
-                              Icon(IconData(cat.icon, fontFamily: 'MaterialIcons'), color: Color(cat.color)),
+                              Icon(IconHelper.getIconData(cat.icon), color: Color(cat.color)),
                               const SizedBox(width: 8),
                               Text(cat.name),
                             ],

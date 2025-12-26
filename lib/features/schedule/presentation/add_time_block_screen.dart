@@ -8,6 +8,7 @@ import '../../categories/data/category_repository.dart';
 import '../../categories/domain/category.dart';
 import '../../../core/notifications/notification_service.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import '../../../core/utils/icon_helper.dart';
 
 class AddTimeBlockScreen extends ConsumerStatefulWidget {
   final String? blockId;
@@ -53,7 +54,7 @@ class _AddTimeBlockScreenState extends ConsumerState<AddTimeBlockScreen> {
         _selectedType = block.type;
         _selectedCategoryId = block.categoryId;
         if (block.color != null) _selectedColor = Color(block.color!);
-        if (block.icon != null) _selectedIcon = IconData(block.icon!, fontFamily: 'MaterialIcons');
+        if (block.icon != null) _selectedIcon = IconHelper.getIconData(block.icon!);
       });
     }
   }
@@ -232,7 +233,7 @@ class _AddTimeBlockScreenState extends ConsumerState<AddTimeBlockScreen> {
                               value: category.id,
                               child: Row(
                                 children: [
-                                  Icon(IconData(category.icon, fontFamily: 'MaterialIcons'), 
+                                  Icon(IconHelper.getIconData(category.icon), 
                                        color: Color(category.color), size: 20),
                                   const SizedBox(width: 8),
                                   Text(category.name),

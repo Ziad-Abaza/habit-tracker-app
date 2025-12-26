@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../data/category_repository.dart';
 import '../domain/category.dart';
 import '../../../core/widgets/app_drawer.dart';
+import '../../../core/utils/icon_helper.dart';
 
 class CategoryListScreen extends ConsumerWidget {
   const CategoryListScreen({super.key});
@@ -39,7 +40,7 @@ class CategoryListScreen extends ConsumerWidget {
                       leading: CircleAvatar(
                         backgroundColor: Color(category.color),
                         child: Icon(
-                          IconData(category.icon, fontFamily: 'MaterialIcons'),
+                          IconHelper.getIconData(category.icon),
                           color: Colors.white,
                         ),
                       ),

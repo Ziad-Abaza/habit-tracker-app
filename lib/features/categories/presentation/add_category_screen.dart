@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../data/category_repository.dart';
 import '../domain/category.dart';
+import '../../../core/utils/icon_helper.dart';
 
 class AddCategoryScreen extends ConsumerStatefulWidget {
   final String? categoryId;
@@ -49,7 +50,7 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
     setState(() {
       _nameController.text = category.name;
       _selectedColor = Color(category.color);
-      _selectedIcon = IconData(category.icon, fontFamily: 'MaterialIcons');
+      _selectedIcon = IconHelper.getIconData(category.icon);
     });
   }
 
